@@ -1,0 +1,22 @@
+{
+  "relevantFacts": [
+    "Full-stack web development experience",
+    "Strong problem-solving and analytical skills",
+    "Experience with agile/scrum methodologies",
+    "Excellent communication and teamwork abilities",
+    "Experience with version control systems",
+    "Database design and optimization",
+    "RESTful API design and implementation",
+    "Cross-browser compatibility testing"
+  ],
+  "forbiddenClaims": [
+    "Overstate years of professional experience",
+    "Claim certifications not actually earned",
+    "Add technologies never actually used",
+    "Fabricate job titles or responsibilities",
+    "Exaggerate achievements or project scale",
+    "List awards or recognitions never received",
+    "Claim native fluency in languages not spoken",
+    "Add degrees from universities never attended"
+  ]
+}

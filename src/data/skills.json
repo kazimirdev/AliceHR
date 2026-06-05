@@ -1,0 +1,65 @@
+{
+  "required": [
+    { "name": "Python", "weight": 10 },
+    { "name": "Django", "weight": 9 },
+    { "name": "Flask", "weight": 9 },
+    { "name": "FastAPI", "weight": 9 },
+    { "name": "Linux", "weight": 8 },
+    { "name": "Docker", "weight": 7 },
+    { "name": "Redis", "weight": 7 },
+    { "name": "Git", "weight": 7 },
+    { "name": "REST API", "weight": 7 },
+    { "name": "HTML", "weight": 6 },
+    { "name": "CSS", "weight": 6 },
+    { "name": "SQL", "weight": 7 },
+    { "name": "Database", "weight": 6 }
+  ],
+  "bonus": [
+    { "name": "PHP", "weight": 5 },
+    { "name": "JavaScript", "weight": 5 },
+    { "name": "AWS", "weight": 6 },
+    { "name": "Kubernetes", "weight": 4 },
+    { "name": "Agile", "weight": 4 },
+    { "name": "CI/CD", "weight": 5 },
+    { "name": "MongoDb", "weight": 4 }
+  ],
+  "synonyms": {
+    "javascript": [
+      "js",
+      "ecmascript",
+      "es6",
+      "es2015",
+      "es2016",
+      "es2017",
+      "es2018",
+      "es2019",
+      "es2020"
+    ],
+    "typescript": ["typescript", "ts"],
+    "react": ["reactjs", "react.js", "jsx", "tsx"],
+    "node.js": ["nodejs", "node"],
+    "rest api": ["rest", "restful", "rest api", "http"],
+    "html": ["html5"],
+    "css": ["css3", "scss"],
+    "git": ["github", "gitlab", "bitbucket", "version control", "vcs"],
+    "sql": ["mysql", "postgresql", "mssql", "oracle", "sqlite", "tsql"],
+    "database": ["db", "databases", "sql", "nosql", "mongodb", "postgresql"],
+    "python": ["py", "python3"],
+    "aws": ["amazon web services", "s3", "lambda", "ec2", "dynamodb"],
+    "docker": ["containers", "containerization"],
+    "kubernetes": ["k8s", "orchestration"],
+    "graphql": ["apollo", "graphql-core"],
+    "agile": ["scrum", "kanban", "sprint"],
+    "ci/cd": [
+      "continuous integration",
+      "continuous deployment",
+      "continuous delivery",
+      "github actions",
+      "jenkins",
+      "gitlab ci"
+    ],
+    "linux": ["unix", "ubuntu", "centos", "debian"],
+    "mongodb": ["mongo", "nosql document"],
+    "redis": ["caching", "cache"]
+  }
+}

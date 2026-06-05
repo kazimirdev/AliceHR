@@ -1,0 +1,16 @@
+{
+  "name": "alicehr",
+  "version": "0.1.0",
+  "description": "Chrome extension MVP for job vacancy screening and ATS resume prompt generation",
+  "scripts": {
+    "build": "tsc && npm run copy-files",
+    "copy-files": "cp src/manifest.json dist/ && cp -r src/data dist/ && cp src/popup/popup.html dist/popup/",
+    "watch": "tsc --watch",
+    "dev": "npm run build && npm run watch",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.43",
+    "typescript": "^5.0.0"
+  }
+}
