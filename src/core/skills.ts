@@ -3,9 +3,25 @@
  */
 
 export interface SkillsData {
-  required: Skill[];
+  required: SkillRequirement[];
   bonus: Skill[];
   synonyms: { [key: string]: string[] };
+}
+
+export type SkillRequirement = SingleSkillRequirement | SkillGroupRequirement;
+
+export interface SingleSkillRequirement {
+  type?: 'skill';
+  name: string;
+  weight: number;
+}
+
+export interface SkillGroupRequirement {
+  type: 'group';
+  name: string;
+  weight: number;
+  match: 'any_of' | 'all_of';
+  skills: string[];
 }
 
 export interface Skill {
@@ -57,4 +73,17 @@ export function expandSkillsWithSynonyms(
     }
   }
   return expanded;
+}
+
+export function isGroupRequirement(requirement: SkillRequirement): requirement is SkillGroupRequirement {
+  return requirement.type === 'group';
+}
+
+export function getSkillSearchTerms(
+  skillName: string,
+  synonyms: { [key: string]: string[] }
+): string[] {
+  const normalized = skillName.toLowerCase().trim();
+  const directSynonyms = synonyms[normalized] || [];
+  return [skillName, ...directSynonyms];
 }
