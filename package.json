@@ -3,14 +3,17 @@
   "version": "0.1.0",
   "description": "Chrome extension MVP for job vacancy screening and ATS resume prompt generation",
   "scripts": {
-    "build": "tsc && npm run copy-files",
-    "copy-files": "cp src/manifest.json dist/ && cp -r src/data dist/ && cp src/popup/popup.html dist/popup/",
-    "watch": "tsc --watch",
-    "dev": "npm run build && npm run watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "bundle": "esbuild src/popup/popup.ts --bundle --format=iife --platform=browser --target=es2020 --outfile=dist/popup/popup.js && esbuild src/content/extractJob.ts --bundle --format=iife --platform=browser --target=es2020 --outfile=dist/content/extractJob.js && esbuild src/background.ts --bundle --format=iife --platform=browser --target=es2020 --outfile=dist/background.js",
+    "copy-files": "mkdir -p dist/popup dist/data && cp src/manifest.json dist/manifest.json && cp src/popup/popup.html dist/popup/popup.html && cp -r src/data/* dist/data/",
+    "build": "npm run clean && npm run typecheck && npm run bundle && npm run copy-files",
+    "dev": "npm run build",
+    "watch": "esbuild src/popup/popup.ts --bundle --format=iife --platform=browser --target=es2020 --outfile=dist/popup/popup.js --watch"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.43",
+    "esbuild": "^0.24.0",
     "typescript": "^5.0.0"
   }
 }
