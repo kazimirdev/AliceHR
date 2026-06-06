@@ -2,88 +2,60 @@
  * Skills dictionary structure and utilities
  */
 
-export interface SkillsData {
-  required: SkillRequirement[];
-  bonus: Skill[];
-  synonyms: { [key: string]: string[] };
+export interface KnownSkillsData {
+  skills: Record<string, string[]>;
 }
 
-export type SkillRequirement = SingleSkillRequirement | SkillGroupRequirement;
-
-export interface SingleSkillRequirement {
-  type?: 'skill';
-  name: string;
-  weight: number;
-}
-
-export interface SkillGroupRequirement {
-  type: 'group';
-  name: string;
-  weight: number;
-  match: 'any_of' | 'all_of';
+export interface MySkillsData {
   skills: string[];
+  equivalents?: Record<string, string[]>;
 }
 
-export interface Skill {
+export interface SkillsData {
+  knownSkills: KnownSkillsData;
+  mySkills: MySkillsData;
+}
+
+export interface ExtractedRequirement {
   name: string;
-  weight: number;
+  matchedTerms: string[];
 }
 
 /**
- * Load skills dictionary from JSON
+ * Load known job skills and candidate skills.
+ *
+ * knownSkills.json = things AliceHR can recognize in job descriptions.
+ * mySkills.json = things the candidate can honestly claim.
  */
 export async function loadSkills(): Promise<SkillsData> {
   try {
-    const response = await fetch(chrome.runtime.getURL('data/skills.json'));
-    return await response.json();
+    const [knownSkillsResponse, mySkillsResponse] = await Promise.all([
+      fetch(chrome.runtime.getURL('data/knownSkills.json')),
+      fetch(chrome.runtime.getURL('data/mySkills.json')),
+    ]);
+
+    if (!knownSkillsResponse.ok) {
+      throw new Error(`Could not load knownSkills.json: ${knownSkillsResponse.status}`);
+    }
+
+    if (!mySkillsResponse.ok) {
+      throw new Error(`Could not load mySkills.json: ${mySkillsResponse.status}`);
+    }
+
+    return {
+      knownSkills: await knownSkillsResponse.json(),
+      mySkills: await mySkillsResponse.json(),
+    };
   } catch (error) {
-    console.error('Failed to load skills dictionary:', error);
-    throw new Error('Could not load skills dictionary');
+    console.error('Failed to load skills data:', error);
+    throw new Error('Could not load skills data');
   }
 }
 
-/**
- * Find synonyms for a skill
- */
-export function getSynonyms(skillName: string, synonyms: { [key: string]: string[] }): string[] {
-  const normalized = skillName.toLowerCase().trim();
-  for (const [key, syns] of Object.entries(synonyms)) {
-    if (normalized === key.toLowerCase() || syns.some((s) => s.toLowerCase() === normalized)) {
-      return [key, ...syns];
-    }
-  }
-  return [skillName];
+export function normalizeSkillName(skillName: string): string {
+  return skillName.toLowerCase().trim();
 }
 
-/**
- * Expand skill list with all synonyms
- */
-export function expandSkillsWithSynonyms(
-  skills: Skill[],
-  synonyms: { [key: string]: string[] }
-): Skill[] {
-  const expanded: Skill[] = [];
-  for (const skill of skills) {
-    expanded.push(skill);
-    const syns = getSynonyms(skill.name, synonyms);
-    for (const syn of syns) {
-      if (syn.toLowerCase() !== skill.name.toLowerCase()) {
-        expanded.push({ name: syn, weight: skill.weight });
-      }
-    }
-  }
-  return expanded;
-}
-
-export function isGroupRequirement(requirement: SkillRequirement): requirement is SkillGroupRequirement {
-  return requirement.type === 'group';
-}
-
-export function getSkillSearchTerms(
-  skillName: string,
-  synonyms: { [key: string]: string[] }
-): string[] {
-  const normalized = skillName.toLowerCase().trim();
-  const directSynonyms = synonyms[normalized] || [];
-  return [skillName, ...directSynonyms];
+export function getSkillAliases(skillName: string, knownSkills: KnownSkillsData): string[] {
+  return [skillName, ...(knownSkills.skills[skillName] || [])];
 }
