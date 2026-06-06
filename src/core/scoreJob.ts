@@ -3,18 +3,29 @@
  */
 
 import { normalizeText, containsSkill } from './normalize';
-import { Skill, SkillsData, expandSkillsWithSynonyms } from './skills';
+import {
+  SkillsData,
+  SkillRequirement,
+  expandSkillsWithSynonyms,
+  getSkillSearchTerms,
+  isGroupRequirement,
+} from './skills';
+
+export interface MatchedRequiredItem {
+  name: string;
+  matchedVia?: string[];
+}
 
 export interface JobScoreResult {
   score: number;
   matchedRequired: string[];
+  matchedRequiredDetails: MatchedRequiredItem[];
   matchedBonus: string[];
   missingRequired: string[];
   redFlags: string[];
   summary: string;
 }
 
-// Red flag keywords that might indicate problematic jobs
 const RED_FLAG_KEYWORDS = [
   'no experience necessary',
   'guaranteed employment',
@@ -26,17 +37,48 @@ const RED_FLAG_KEYWORDS = [
   'no background check',
 ];
 
-/**
- * Score a job posting against skills dictionary
- */
+function findMatchedSkillNames(
+  normalizedJob: string,
+  skillNames: string[],
+  synonyms: SkillsData['synonyms']
+): string[] {
+  return skillNames.filter((skillName) => {
+    const searchTerms = getSkillSearchTerms(skillName, synonyms);
+    return searchTerms.some((term) => containsSkill(normalizedJob, term));
+  });
+}
+
+function scoreRequirement(
+  normalizedJob: string,
+  requirement: SkillRequirement,
+  synonyms: SkillsData['synonyms']
+): { matched: boolean; matchedVia: string[] } {
+  if (isGroupRequirement(requirement)) {
+    const matchedVia = findMatchedSkillNames(normalizedJob, requirement.skills, synonyms);
+
+    return {
+      matched:
+        requirement.match === 'all_of'
+          ? matchedVia.length === requirement.skills.length
+          : matchedVia.length > 0,
+      matchedVia,
+    };
+  }
+
+  const matchedVia = findMatchedSkillNames(normalizedJob, [requirement.name], synonyms);
+
+  return {
+    matched: matchedVia.length > 0,
+    matchedVia,
+  };
+}
+
 export function scoreJob(jobText: string, skillsData: SkillsData): JobScoreResult {
   const normalizedJob = normalizeText(jobText);
-
-  // Expand skills with synonyms
-  const requiredSkills = expandSkillsWithSynonyms(skillsData.required, skillsData.synonyms);
   const bonusSkills = expandSkillsWithSynonyms(skillsData.bonus, skillsData.synonyms);
 
   const matchedRequired: string[] = [];
+  const matchedRequiredDetails: MatchedRequiredItem[] = [];
   const matchedBonus: string[] = [];
   const missingRequired: string[] = [];
   const redFlags: string[] = [];
@@ -44,25 +86,23 @@ export function scoreJob(jobText: string, skillsData: SkillsData): JobScoreResul
   let totalWeight = 0;
   let matchedWeight = 0;
 
-  // Check required skills
-  for (const skill of skillsData.required) {
-    totalWeight += skill.weight;
-    const skillSynonyms = [
-      skill.name,
-      ...(skillsData.synonyms[skill.name.toLowerCase()] || []),
-    ];
+  for (const requirement of skillsData.required) {
+    totalWeight += requirement.weight;
 
-    const matched = skillSynonyms.some((syn) => containsSkill(normalizedJob, syn));
+    const result = scoreRequirement(normalizedJob, requirement, skillsData.synonyms);
 
-    if (matched) {
-      matchedRequired.push(skill.name);
-      matchedWeight += skill.weight;
+    if (result.matched) {
+      matchedRequired.push(requirement.name);
+      matchedRequiredDetails.push({
+        name: requirement.name,
+        matchedVia: result.matchedVia.length ? result.matchedVia : undefined,
+      });
+      matchedWeight += requirement.weight;
     } else {
-      missingRequired.push(skill.name);
+      missingRequired.push(requirement.name);
     }
   }
 
-  // Check bonus skills
   for (const skill of bonusSkills) {
     if (!matchedRequired.includes(skill.name) && !matchedBonus.includes(skill.name)) {
       const skillSynonyms = [
@@ -78,18 +118,16 @@ export function scoreJob(jobText: string, skillsData: SkillsData): JobScoreResul
     }
   }
 
-  // Check for red flags
   for (const flag of RED_FLAG_KEYWORDS) {
     if (normalizedJob.includes(normalizeText(flag))) {
       redFlags.push(flag);
     }
   }
 
-  // Calculate score: 0-100
   const score = totalWeight > 0 ? Math.round((matchedWeight / totalWeight) * 100) : 0;
 
   const summary =
-    matchedRequired.length === skillsData.required.length
+    missingRequired.length === 0
       ? 'Excellent match!'
       : matchedRequired.length > skillsData.required.length / 2
         ? 'Good match'
@@ -98,6 +136,7 @@ export function scoreJob(jobText: string, skillsData: SkillsData): JobScoreResul
   return {
     score,
     matchedRequired,
+    matchedRequiredDetails,
     matchedBonus,
     missingRequired,
     redFlags,
@@ -105,9 +144,6 @@ export function scoreJob(jobText: string, skillsData: SkillsData): JobScoreResul
   };
 }
 
-/**
- * Check if score meets threshold for prompt generation
- */
 export function meetsPromptThreshold(score: number, threshold: number = 50): boolean {
   return score >= threshold;
 }
