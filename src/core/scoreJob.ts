@@ -3,23 +3,12 @@
  */
 
 import { normalizeText, containsSkill } from './normalize';
-import {
-  SkillsData,
-  SkillRequirement,
-  expandSkillsWithSynonyms,
-  getSkillSearchTerms,
-  isGroupRequirement,
-} from './skills';
-
-export interface MatchedRequiredItem {
-  name: string;
-  matchedVia?: string[];
-}
+import { ExtractedRequirement, SkillsData, getSkillAliases, normalizeSkillName } from './skills';
 
 export interface JobScoreResult {
   score: number;
+  extractedRequirements: string[];
   matchedRequired: string[];
-  matchedRequiredDetails: MatchedRequiredItem[];
   matchedBonus: string[];
   missingRequired: string[];
   redFlags: string[];
@@ -37,84 +26,60 @@ const RED_FLAG_KEYWORDS = [
   'no background check',
 ];
 
-function findMatchedSkillNames(
-  normalizedJob: string,
-  skillNames: string[],
-  synonyms: SkillsData['synonyms']
-): string[] {
-  return skillNames.filter((skillName) => {
-    const searchTerms = getSkillSearchTerms(skillName, synonyms);
-    return searchTerms.some((term) => containsSkill(normalizedJob, term));
-  });
+function extractRequirements(jobText: string, skillsData: SkillsData): ExtractedRequirement[] {
+  const normalizedJob = normalizeText(jobText);
+
+  return Object.keys(skillsData.knownSkills.skills)
+    .map((skillName) => {
+      const aliases = getSkillAliases(skillName, skillsData.knownSkills);
+      const matchedTerms = aliases.filter((alias) => containsSkill(normalizedJob, alias));
+
+      return {
+        name: skillName,
+        matchedTerms,
+      };
+    })
+    .filter((requirement) => requirement.matchedTerms.length > 0);
 }
 
-function scoreRequirement(
-  normalizedJob: string,
-  requirement: SkillRequirement,
-  synonyms: SkillsData['synonyms']
-): { matched: boolean; matchedVia: string[] } {
-  if (isGroupRequirement(requirement)) {
-    const matchedVia = findMatchedSkillNames(normalizedJob, requirement.skills, synonyms);
+function buildCandidateSkillSet(skillsData: SkillsData): Set<string> {
+  const candidateSkills = new Set<string>();
 
-    return {
-      matched:
-        requirement.match === 'all_of'
-          ? matchedVia.length === requirement.skills.length
-          : matchedVia.length > 0,
-      matchedVia,
-    };
+  for (const skill of skillsData.mySkills.skills) {
+    candidateSkills.add(normalizeSkillName(skill));
   }
 
-  const matchedVia = findMatchedSkillNames(normalizedJob, [requirement.name], synonyms);
+  for (const [skill, equivalents] of Object.entries(skillsData.mySkills.equivalents || {})) {
+    if (!candidateSkills.has(normalizeSkillName(skill))) {
+      continue;
+    }
 
-  return {
-    matched: matchedVia.length > 0,
-    matchedVia,
-  };
-}
-
-export function scoreJob(jobText: string, skillsData: SkillsData): JobScoreResult {
-  const normalizedJob = normalizeText(jobText);
-  const bonusSkills = expandSkillsWithSynonyms(skillsData.bonus, skillsData.synonyms);
-
-  const matchedRequired: string[] = [];
-  const matchedRequiredDetails: MatchedRequiredItem[] = [];
-  const matchedBonus: string[] = [];
-  const missingRequired: string[] = [];
-  const redFlags: string[] = [];
-
-  let totalWeight = 0;
-  let matchedWeight = 0;
-
-  for (const requirement of skillsData.required) {
-    totalWeight += requirement.weight;
-
-    const result = scoreRequirement(normalizedJob, requirement, skillsData.synonyms);
-
-    if (result.matched) {
-      matchedRequired.push(requirement.name);
-      matchedRequiredDetails.push({
-        name: requirement.name,
-        matchedVia: result.matchedVia.length ? result.matchedVia : undefined,
-      });
-      matchedWeight += requirement.weight;
-    } else {
-      missingRequired.push(requirement.name);
+    for (const equivalent of equivalents) {
+      candidateSkills.add(normalizeSkillName(equivalent));
     }
   }
 
-  for (const skill of bonusSkills) {
-    if (!matchedRequired.includes(skill.name) && !matchedBonus.includes(skill.name)) {
-      const skillSynonyms = [
-        skill.name,
-        ...(skillsData.synonyms[skill.name.toLowerCase()] || []),
-      ];
+  return candidateSkills;
+}
 
-      const matched = skillSynonyms.some((syn) => containsSkill(normalizedJob, syn));
+/**
+ * Score a job posting by extracting requirements from the job text and comparing
+ * those requirements with the candidate's actual skill list.
+ */
+export function scoreJob(jobText: string, skillsData: SkillsData): JobScoreResult {
+  const normalizedJob = normalizeText(jobText);
+  const requirements = extractRequirements(jobText, skillsData);
+  const candidateSkills = buildCandidateSkillSet(skillsData);
 
-      if (matched) {
-        matchedBonus.push(skill.name);
-      }
+  const matchedRequired: string[] = [];
+  const missingRequired: string[] = [];
+  const redFlags: string[] = [];
+
+  for (const requirement of requirements) {
+    if (candidateSkills.has(normalizeSkillName(requirement.name))) {
+      matchedRequired.push(requirement.name);
+    } else {
+      missingRequired.push(requirement.name);
     }
   }
 
@@ -124,20 +89,25 @@ export function scoreJob(jobText: string, skillsData: SkillsData): JobScoreResul
     }
   }
 
-  const score = totalWeight > 0 ? Math.round((matchedWeight / totalWeight) * 100) : 0;
+  const score =
+    requirements.length > 0 ? Math.round((matchedRequired.length / requirements.length) * 100) : 0;
 
   const summary =
-    missingRequired.length === 0
-      ? 'Excellent match!'
-      : matchedRequired.length > skillsData.required.length / 2
-        ? 'Good match'
-        : 'Partial match';
+    requirements.length === 0
+      ? 'No known requirements found'
+      : missingRequired.length === 0
+        ? 'Excellent match!'
+        : score >= 70
+          ? 'Good match'
+          : score >= 40
+            ? 'Partial match'
+            : 'Weak match';
 
   return {
     score,
+    extractedRequirements: requirements.map((requirement) => requirement.name),
     matchedRequired,
-    matchedRequiredDetails,
-    matchedBonus,
+    matchedBonus: [],
     missingRequired,
     redFlags,
     summary,
