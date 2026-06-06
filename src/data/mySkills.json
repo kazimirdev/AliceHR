@@ -1,0 +1,23 @@
+{
+  "skills": [
+    "Python",
+    "Django",
+    "Flask",
+    "FastAPI",
+    "PostgreSQL",
+    "MySQL",
+    "SQLite",
+    "SQL",
+    "Docker",
+    "Linux",
+    "Git",
+    "REST API",
+    "HTML",
+    "CSS",
+    "JavaScript"
+  ],
+  "equivalents": {
+    "PostgreSQL": ["MySQL", "SQLite"],
+    "Django": ["Flask", "FastAPI"]
+  }
+}
