@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AliceHR - Job Screening & ATS Prompt Generator",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Screen job vacancies and generate ATS-optimized resume prompts",
   "permissions": ["storage", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
